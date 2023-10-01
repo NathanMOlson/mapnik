@@ -292,7 +292,6 @@ bool proj_transform::forward(double* x, double* y, double* z, std::size_t point_
                            0) != point_count)
         return false;
     }
-    }
 
 #endif
     if (is_dest_camera_)
@@ -558,48 +557,37 @@ std::string proj_transform::definition() const
 
 void proj_transform::init_cam_params(const std::string& params)
 {
-    cam_params_.lat = 45.54;
-    cam_params_.lon = -74.87;
+    cam_params_.lat = 44.3;
+    cam_params_.lon = -69;
     cam_params_.alt = 10000;
-    cam_params_.i_fov = 0.1;
+    cam_params_.i_fov = 0.05;
     cam_params_.width = 800;
     cam_params_.height = 600;
 }
 
 bool proj_transform::lonlat2camera(double* x, double* y, const double* z, std::size_t point_count, std::size_t stride) const
 {
-    bool in = false;
-    //std::cout<<"ll2cam"<<std::endl;
     for (std::size_t i = 0; i < point_count; ++i)
     {
-        //std::cout<< x[i * stride]<<", "<<y[i * stride]<<", "<<z[i * stride]<<" => ";
         double e = EARTH_RADIUS * util::radians(x[i * stride] - cam_params_.lon) * cos(util::radians(cam_params_.lat));
         double n = EARTH_RADIUS * util::radians(y[i * stride] - cam_params_.lat);
         double d = cam_params_.alt - z[i * stride];
         x[i * stride] = (cam_params_.width - 1)/2.0 + e / d / cam_params_.i_fov;
         y[i * stride] = (cam_params_.height - 1)/2.0 + n / d / cam_params_.i_fov;
-        if(x[i * stride] >= 0 && y[i * stride] >= 0 && x[i * stride] < cam_params_.width && y[i * stride] < cam_params_.height)
-        {
-            std::cout<< x[i * stride]<<", "<<y[i * stride]<<std::endl;
-            in = true;
-        }
     }
     return true;
 }
 
 bool proj_transform::camera2latlon(double* x, double* y, double* z, std::size_t point_count, std::size_t stride) const
 {
-    //std::cout<<"cam2lla"<<std::endl;
     for (std::size_t i = 0; i < point_count; ++i)
     {
-        //std::cout<< x[i * stride]<<", "<<y[i * stride]<<" => ";
         double d = cam_params_.alt;
         double e = d * cam_params_.i_fov * (x[i * stride] - (cam_params_.width - 1)/2.0);
         double n = d * cam_params_.i_fov * (y[i * stride] - (cam_params_.height - 1)/2.0);
         x[i * stride] = cam_params_.lon + util::degrees(e / EARTH_RADIUS) / cos(util::radians(cam_params_.lat));
         y[i * stride] = cam_params_.lat + util::degrees(n / EARTH_RADIUS);
         z[i * stride] = 0;
-        //std::cout<< x[i * stride]<<", "<<y[i * stride]<<std::endl;
     }
     return true;
 }
