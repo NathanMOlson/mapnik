@@ -36,10 +36,16 @@
 
 namespace mapnik {
 
+bool is_camera_proj(std::string const& str)
+{
+    return str == "camera";
+}
+
 projection::projection(std::string const& params, bool defer_proj_init)
     : params_(params)
     , defer_proj_init_(defer_proj_init)
     , is_geographic_(false)
+    , is_camera_(false)
     , proj_(nullptr)
     , proj_ctx_(nullptr)
 {
@@ -47,6 +53,10 @@ projection::projection(std::string const& params, bool defer_proj_init)
     if (is_known)
     {
         is_geographic_ = *is_known;
+    }
+    else if(is_camera_proj(params_))
+    {
+        is_camera_ = true;
     }
     else
     {
@@ -65,6 +75,7 @@ projection::projection(projection const& rhs)
     : params_(rhs.params_)
     , defer_proj_init_(rhs.defer_proj_init_)
     , is_geographic_(rhs.is_geographic_)
+    , is_camera_(rhs.is_camera_)
     , proj_(nullptr)
     , proj_ctx_(nullptr)
 {
@@ -128,6 +139,11 @@ bool projection::is_initialized() const
 bool projection::is_geographic() const
 {
     return is_geographic_;
+}
+
+bool projection::is_camera() const
+{
+    return is_camera_;
 }
 
 boost::optional<well_known_srs_e> projection::well_known() const
@@ -213,6 +229,7 @@ void projection::swap(projection& rhs)
     std::swap(params_, rhs.params_);
     std::swap(defer_proj_init_, rhs.defer_proj_init_);
     std::swap(is_geographic_, rhs.is_geographic_);
+    std::swap(is_camera_, rhs.is_camera_);
 }
 
 } // namespace mapnik

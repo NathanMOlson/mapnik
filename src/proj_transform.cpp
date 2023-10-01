@@ -98,6 +98,8 @@ proj_transform::proj_transform(projection const& source, projection const& dest)
     , is_source_equal_dest_(false)
     , wgs84_to_merc_(false)
     , merc_to_wgs84_(false)
+    , is_dest_camera_(false)
+    , is_src_camera_(false)
 {
     is_source_equal_dest_ = (source == dest);
     if (!is_source_equal_dest_)
@@ -107,6 +109,34 @@ proj_transform::proj_transform(projection const& source, projection const& dest)
         boost::optional<well_known_srs_e> src_k = source.well_known();
         boost::optional<well_known_srs_e> dest_k = dest.well_known();
         bool known_trans = false;
+        projection src_proj = source;
+        projection dest_proj = dest;
+        if (source.is_camera())
+        {
+            is_src_camera_ = true;
+            init_cam_params(source.params());
+            if(dest_k && *dest_k == well_known_srs_enum::WGS_84)
+            {
+                known_trans = true;
+            }
+            else
+            {
+                src_proj = projection("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs");
+            }
+        }
+        if (dest.is_camera())
+        {
+            is_dest_camera_ = true;
+            init_cam_params(dest.params());
+            if(src_k && *src_k == well_known_srs_enum::WGS_84)
+            {
+                known_trans = true;
+            }
+            else
+            {
+                dest_proj = projection("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs");
+            }
+        }
         if (src_k && dest_k)
         {
             if (*src_k == well_known_srs_enum::WGS_84 && *dest_k == well_known_srs_enum::WEB_MERC)
@@ -125,12 +155,12 @@ proj_transform::proj_transform(projection const& source, projection const& dest)
 #ifdef MAPNIK_USE_PROJ
             ctx_ = proj_context_create();
             proj_log_level(ctx_, PJ_LOG_ERROR);
-            transform_ = proj_create_crs_to_crs(ctx_, source.params().c_str(), dest.params().c_str(), nullptr);
+            transform_ = proj_create_crs_to_crs(ctx_, src_proj.params().c_str(), dest_proj.params().c_str(), nullptr);
             if (transform_ == nullptr)
             {
                 throw std::runtime_error(
                   std::string("Cannot initialize proj_transform  (crs_to_crs) for given projections: '") +
-                  source.params() + "'->'" + dest.params() +
+                  src_proj.params() + "'->'" + dest_proj.params() +
 #if MAPNIK_PROJ_VERSION >= 80000
                   "' because of " + std::string(proj_context_errno_string(ctx_, proj_context_errno(ctx_))));
 #else
@@ -142,7 +172,7 @@ proj_transform::proj_transform(projection const& source, projection const& dest)
             {
                 throw std::runtime_error(
                   std::string("Cannot initialize proj_transform (normalize) for given projections: '") +
-                  source.params() + "'->'" + dest.params() +
+                  src_proj.params() + "'->'" + dest_proj.params() +
 #if MAPNIK_PROJ_VERSION >= 80000
                   "' because of " + std::string(proj_context_errno_string(ctx_, proj_context_errno(ctx_))));
 #else
@@ -155,7 +185,7 @@ proj_transform::proj_transform(projection const& source, projection const& dest)
             throw std::runtime_error(
               std::string(
                 "Cannot initialize proj_transform for given projections without proj support (-DMAPNIK_USE_PROJ): '") +
-              source.params() + "'->'" + dest.params() + "'");
+              src_proj.params() + "'->'" + dest_proj.params() + "'");
 #endif
         }
     }
@@ -244,6 +274,8 @@ bool proj_transform::forward(double* x, double* y, double* z, std::size_t point_
     }
 
 #ifdef MAPNIK_USE_PROJ
+    if (transform_)
+    {
     if (proj_trans_generic(transform_,
                            PJ_FWD,
                            x,
@@ -259,8 +291,18 @@ bool proj_transform::forward(double* x, double* y, double* z, std::size_t point_
                            0,
                            0) != point_count)
         return false;
+    }
+    }
 
 #endif
+    if (is_dest_camera_)
+    {
+        return lonlat2camera(x, y, z, point_count, offset);
+    }
+    if (is_src_camera_)
+    {
+        return camera2latlon(x, y, z, point_count, offset);
+    }
     return true;
 }
 
@@ -279,6 +321,8 @@ bool proj_transform::backward(double* x, double* y, double* z, std::size_t point
     }
 
 #ifdef MAPNIK_USE_PROJ
+    if (transform_)
+    {
     if (proj_trans_generic(transform_,
                            PJ_INV,
                            x,
@@ -294,7 +338,16 @@ bool proj_transform::backward(double* x, double* y, double* z, std::size_t point
                            0,
                            0) != point_count)
         return false;
+    }
 #endif
+    if (is_dest_camera_)
+    {
+        return camera2latlon(x, y, z, point_count, offset);
+    }
+    if (is_src_camera_)
+    {
+        return lonlat2camera(x, y, z, point_count, offset);
+    }
     return true;
 }
 
@@ -501,6 +554,54 @@ std::string proj_transform::definition() const
         return "merc => wgs84";
     }
     return "unknown";
+}
+
+void proj_transform::init_cam_params(const std::string& params)
+{
+    cam_params_.lat = 45.54;
+    cam_params_.lon = -74.87;
+    cam_params_.alt = 10000;
+    cam_params_.i_fov = 0.1;
+    cam_params_.width = 800;
+    cam_params_.height = 600;
+}
+
+bool proj_transform::lonlat2camera(double* x, double* y, const double* z, std::size_t point_count, std::size_t stride) const
+{
+    bool in = false;
+    //std::cout<<"ll2cam"<<std::endl;
+    for (std::size_t i = 0; i < point_count; ++i)
+    {
+        //std::cout<< x[i * stride]<<", "<<y[i * stride]<<", "<<z[i * stride]<<" => ";
+        double e = EARTH_RADIUS * util::radians(x[i * stride] - cam_params_.lon) * cos(util::radians(cam_params_.lat));
+        double n = EARTH_RADIUS * util::radians(y[i * stride] - cam_params_.lat);
+        double d = cam_params_.alt - z[i * stride];
+        x[i * stride] = (cam_params_.width - 1)/2.0 + e / d / cam_params_.i_fov;
+        y[i * stride] = (cam_params_.height - 1)/2.0 - n / d / cam_params_.i_fov;
+        if(x[i * stride] >= 0 && y[i * stride] >= 0 && x[i * stride] < cam_params_.width && y[i * stride] < cam_params_.height)
+        {
+            std::cout<< x[i * stride]<<", "<<y[i * stride]<<std::endl;
+            in = true;
+        }
+    }
+    return true;
+}
+
+bool proj_transform::camera2latlon(double* x, double* y, double* z, std::size_t point_count, std::size_t stride) const
+{
+    //std::cout<<"cam2lla"<<std::endl;
+    for (std::size_t i = 0; i < point_count; ++i)
+    {
+        //std::cout<< x[i * stride]<<", "<<y[i * stride]<<" => ";
+        double d = cam_params_.alt;
+        double e = d * cam_params_.i_fov * (x[i * stride] - (cam_params_.width - 1)/2.0);
+        double n = d * cam_params_.i_fov * ((cam_params_.height - 1)/2.0 - y[i * stride]);
+        x[i * stride] = cam_params_.lon + util::degrees(e / EARTH_RADIUS) / cos(util::radians(cam_params_.lat));
+        y[i * stride] = cam_params_.lat + util::degrees(n / EARTH_RADIUS);
+        z[i * stride] = 0;
+        //std::cout<< x[i * stride]<<", "<<y[i * stride]<<std::endl;
+    }
+    return true;
 }
 
 } // namespace mapnik

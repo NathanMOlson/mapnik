@@ -73,6 +73,7 @@ class MAPNIK_DECL projection
     bool operator!=(const projection& other) const;
     bool is_initialized() const;
     bool is_geographic() const;
+    bool is_camera() const;
     boost::optional<well_known_srs_e> well_known() const;
     std::string const& params() const;
     void forward(double& x, double& y) const;
@@ -87,6 +88,7 @@ class MAPNIK_DECL projection
     std::string params_;
     bool defer_proj_init_;
     mutable bool is_geographic_;
+    bool is_camera_;
     mutable PJ* proj_;
     mutable PJ_CONTEXT* proj_ctx_;
 };

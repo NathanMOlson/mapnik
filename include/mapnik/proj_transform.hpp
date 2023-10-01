@@ -36,6 +36,16 @@ namespace mapnik {
 template<typename T>
 class box2d;
 
+struct cam_params
+{
+    double lat;
+    double lon;
+    double alt;
+    double i_fov;
+    std::size_t width;
+    std::size_t height;
+};
+
 class MAPNIK_DECL proj_transform : private util::noncopyable
 {
   public:
@@ -58,6 +68,10 @@ class MAPNIK_DECL proj_transform : private util::noncopyable
     std::string definition() const;
 
   private:
+    void init_cam_params(const std::string& params);
+    bool lonlat2camera(double* x, double* y, const double* z, std::size_t point_count, std::size_t stride = 1) const;
+    bool camera2latlon(double* x, double* y, double* z, std::size_t point_count, std::size_t stride = 1) const;
+
     PJ_CONTEXT* ctx_ = nullptr;
     PJ* transform_ = nullptr;
     bool is_source_longlat_;
@@ -65,6 +79,9 @@ class MAPNIK_DECL proj_transform : private util::noncopyable
     bool is_source_equal_dest_;
     bool wgs84_to_merc_;
     bool merc_to_wgs84_;
+    bool is_dest_camera_;
+    bool is_src_camera_;
+    cam_params cam_params_;
 };
 
 } // namespace mapnik
