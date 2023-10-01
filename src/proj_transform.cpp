@@ -557,6 +557,10 @@ std::string proj_transform::definition() const
 
 void proj_transform::init_cam_params(const std::string& params)
 {
+    double roll = 0;
+    double pitch = 0;
+    cam_params_.yaw = 0;
+
     std::stringstream ss;
     
     int index = params.find("+lat=") + 5;
@@ -582,6 +586,32 @@ void proj_transform::init_cam_params(const std::string& params)
     index = params.find("+height=") + 8;
     ss = std::stringstream(params.substr(index, std::string::npos));
     ss >> cam_params_.height;
+
+    
+
+    index = params.find("+roll=");
+    if(index != std::string::npos)
+    {
+        index += 6;
+        ss = std::stringstream(params.substr(index, std::string::npos));
+        ss >> roll;
+    }
+
+    index = params.find("+pitch=");
+    if(index != std::string::npos)
+    {
+        index += 7;
+        ss = std::stringstream(params.substr(index, std::string::npos));
+        ss >> pitch;
+    }
+
+    index = params.find("+yaw=");
+    if(index != std::string::npos)
+    {
+        index += 5;
+        ss = std::stringstream(params.substr(index, std::string::npos));
+        ss >> cam_params_.yaw;
+    }
 }
 
 bool proj_transform::lonlat2camera(double* x, double* y, const double* z, std::size_t point_count, std::size_t stride) const
@@ -591,8 +621,10 @@ bool proj_transform::lonlat2camera(double* x, double* y, const double* z, std::s
         double e = EARTH_RADIUS * util::radians(x[i * stride] - cam_params_.lon) * cos(util::radians(cam_params_.lat));
         double n = EARTH_RADIUS * util::radians(y[i * stride] - cam_params_.lat);
         double d = cam_params_.alt - z[i * stride];
-        x[i * stride] = (cam_params_.width - 1)/2.0 + e / d / cam_params_.i_fov;
-        y[i * stride] = (cam_params_.height - 1)/2.0 + n / d / cam_params_.i_fov;
+        double cyaw = cos(util::radians(cam_params_.yaw));
+        double syaw = sin(util::radians(cam_params_.yaw));
+        x[i * stride] = (cam_params_.width - 1)/2.0 + (e*cyaw - n*syaw) / d / cam_params_.i_fov;
+        y[i * stride] = (cam_params_.height - 1)/2.0 + (n*cyaw + e*syaw) / d / cam_params_.i_fov;
     }
     return true;
 }
