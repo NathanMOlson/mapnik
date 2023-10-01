@@ -51,9 +51,8 @@ int main(int, char**)
     using namespace mapnik;
     const std::string srs_lcc =
       "+proj=lcc +ellps=GRS80 +lat_0=49 +lon_0=-95 +lat+1=49 +lat_2=77 +datum=NAD83 +units=m +no_defs";
-    const std::string srs_merc = "camera";
-    //const std::string srs_merc = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 "
-    //                             "+units=m +nadgrids=@null +wktext +no_defs +over";
+    const std::string srs_merc = "+camera +lat=44.3 +lon=-69 +alt=10000 +ifov=0.05 +width=800 +height=600";
+
     mapnik::setup();
     try
     {
@@ -309,7 +308,6 @@ int main(int, char**)
         }
 
         m.zoom_to_box(box2d<double>(0,0, 800,600));
-        //m.zoom_to_box(box2d<double>(-8024477.28459, 5445190.38849, -7381388.20071, 5662941.44855));
 
         image_rgba8 buf(m.width(), m.height());
         agg_renderer<image_rgba8> ren(m, buf);

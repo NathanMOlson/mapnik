@@ -38,7 +38,7 @@ namespace mapnik {
 
 bool is_camera_proj(std::string const& str)
 {
-    return str == "camera";
+    return str.find("+camera") == 0;
 }
 
 projection::projection(std::string const& params, bool defer_proj_init)
