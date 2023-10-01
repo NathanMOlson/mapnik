@@ -559,7 +559,7 @@ void proj_transform::init_cam_params(const std::string& params)
 {
     double roll = 0;
     double pitch = 0;
-    cam_params_.yaw = 0;
+    double yaw = 0;
 
     std::stringstream ss;
     
@@ -610,8 +610,25 @@ void proj_transform::init_cam_params(const std::string& params)
     {
         index += 5;
         ss = std::stringstream(params.substr(index, std::string::npos));
-        ss >> cam_params_.yaw;
+        ss >> yaw;
     }
+
+    double croll = cos(util::radians(roll));
+    double sroll = sin(util::radians(roll));
+    double cpitch = cos(util::radians(pitch));
+    double spitch = sin(util::radians(pitch));
+    double cyaw = cos(util::radians(yaw));
+    double syaw = sin(util::radians(yaw));
+
+    cam_params_.rot[0][0] = cyaw*cpitch;
+    cam_params_.rot[0][1] = syaw*cpitch;
+    cam_params_.rot[0][2] = -spitch;
+    cam_params_.rot[1][0] = cyaw*spitch*sroll - syaw*croll;
+    cam_params_.rot[1][1] = syaw*spitch*sroll + cyaw*croll;
+    cam_params_.rot[1][2] = cpitch*sroll;
+    cam_params_.rot[2][0] = cyaw*spitch*croll + syaw*sroll;
+    cam_params_.rot[2][1] = syaw*spitch*croll - cyaw*sroll;
+    cam_params_.rot[2][2] = cpitch*croll;
 }
 
 bool proj_transform::lonlat2camera(double* x, double* y, const double* z, std::size_t point_count, std::size_t stride) const
@@ -621,10 +638,11 @@ bool proj_transform::lonlat2camera(double* x, double* y, const double* z, std::s
         double e = EARTH_RADIUS * util::radians(x[i * stride] - cam_params_.lon) * cos(util::radians(cam_params_.lat));
         double n = EARTH_RADIUS * util::radians(y[i * stride] - cam_params_.lat);
         double d = cam_params_.alt - z[i * stride];
-        double cyaw = cos(util::radians(cam_params_.yaw));
-        double syaw = sin(util::radians(cam_params_.yaw));
-        x[i * stride] = (cam_params_.width - 1)/2.0 + (e*cyaw - n*syaw) / d / cam_params_.i_fov;
-        y[i * stride] = (cam_params_.height - 1)/2.0 + (n*cyaw + e*syaw) / d / cam_params_.i_fov;
+        double f = n*cam_params_.rot[0][0] + e*cam_params_.rot[0][1] + d*cam_params_.rot[0][2];
+        double r = n*cam_params_.rot[1][0] + e*cam_params_.rot[1][1] + d*cam_params_.rot[1][2];
+        double b = n*cam_params_.rot[2][0] + e*cam_params_.rot[2][1] + d*cam_params_.rot[2][2];
+        x[i * stride] = (cam_params_.width - 1)/2.0 + r / b / cam_params_.i_fov;
+        y[i * stride] = (cam_params_.height - 1)/2.0 + f / b / cam_params_.i_fov;
     }
     return true;
 }

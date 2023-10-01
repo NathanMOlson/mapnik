@@ -44,7 +44,7 @@ struct cam_params
     double i_fov;
     std::size_t width;
     std::size_t height;
-    double yaw;
+    double rot[3][3];
 };
 
 class MAPNIK_DECL proj_transform : private util::noncopyable
