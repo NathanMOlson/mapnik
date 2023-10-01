@@ -557,12 +557,31 @@ std::string proj_transform::definition() const
 
 void proj_transform::init_cam_params(const std::string& params)
 {
-    cam_params_.lat = 44.3;
-    cam_params_.lon = -69;
-    cam_params_.alt = 10000;
-    cam_params_.i_fov = 0.05;
-    cam_params_.width = 800;
-    cam_params_.height = 600;
+    std::stringstream ss;
+    
+    int index = params.find("+lat=") + 5;
+    ss = std::stringstream(params.substr(index, std::string::npos));
+    ss >> cam_params_.lat;
+    
+    index = params.find("+lon=") + 5;
+    ss = std::stringstream(params.substr(index, std::string::npos));
+    ss >> cam_params_.lon;
+    
+    index = params.find("+alt=") + 5;
+    ss = std::stringstream(params.substr(index, std::string::npos));
+    ss >> cam_params_.alt;
+    
+    index = params.find("+ifov=") + 6;
+    ss = std::stringstream(params.substr(index, std::string::npos));
+    ss >> cam_params_.i_fov;
+    
+    index = params.find("+width=") + 7;
+    ss = std::stringstream(params.substr(index, std::string::npos));
+    ss >> cam_params_.width;
+
+    index = params.find("+height=") + 8;
+    ss = std::stringstream(params.substr(index, std::string::npos));
+    ss >> cam_params_.height;
 }
 
 bool proj_transform::lonlat2camera(double* x, double* y, const double* z, std::size_t point_count, std::size_t stride) const
