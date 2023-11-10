@@ -664,9 +664,15 @@ bool proj_transform::camera2latlon(double* x, double* y, double* z, std::size_t 
 {
     for (std::size_t i = 0; i < point_count; ++i)
     {
-        double d = cam_params_.alt;
-        double e = d * cam_params_.i_fov * (x[i * stride] - (cam_params_.width - 1)/2.0);
-        double n = d * cam_params_.i_fov * (y[i * stride] - (cam_params_.height - 1)/2.0);
+        double r = cam_params_.i_fov * (x[i * stride] - (cam_params_.width - 1)/2.0);
+        double f = cam_params_.i_fov * (y[i * stride] - (cam_params_.height - 1)/2.0);
+        double b = 1;
+        double n = f*cam_params_.rot[0][0] + r*cam_params_.rot[1][0] + b*cam_params_.rot[2][0];
+        double e = f*cam_params_.rot[0][1] + r*cam_params_.rot[1][1] + b*cam_params_.rot[2][1];
+        double d = f*cam_params_.rot[0][2] + r*cam_params_.rot[1][2] + b*cam_params_.rot[2][2];
+        n = n * cam_params_.alt / d;
+        e = e * cam_params_.alt / d;
+        d = cam_params_.alt;
         x[i * stride] = cam_params_.lon + util::degrees(e / EARTH_RADIUS) / cos(util::radians(cam_params_.lat));
         y[i * stride] = cam_params_.lat + util::degrees(n / EARTH_RADIUS);
         z[i * stride] = 0;
