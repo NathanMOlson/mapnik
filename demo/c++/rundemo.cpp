@@ -46,12 +46,12 @@
 
 #include <iostream>
 
-int main(int, char**)
+int main(int, char** args)
 {
     using namespace mapnik;
     const std::string srs_lcc =
       "+proj=lcc +ellps=GRS80 +lat_0=49 +lon_0=-95 +lat+1=49 +lat_2=77 +datum=NAD83 +units=m +no_defs";
-    const std::string srs_merc = "+camera +lat=43.3 +lon=-68 +alt=100000 +ifov=0.001 +width=800 +height=600 +roll=45 +pitch=45 +yaw=10";
+    const std::string srs_merc = args[1];
 
     mapnik::setup();
     try
