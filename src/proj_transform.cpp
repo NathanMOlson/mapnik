@@ -272,6 +272,14 @@ bool proj_transform::forward(double* x, double* y, double* z, std::size_t point_
     {
         return merc2lonlat(x, y, point_count, offset);
     }
+    
+    if (is_src_camera_)
+    {
+        if(!camera2latlon(x, y, z, point_count, offset))
+        {
+            return false;
+        }
+    }
 
 #ifdef MAPNIK_USE_PROJ
     if (transform_)
@@ -298,10 +306,6 @@ bool proj_transform::forward(double* x, double* y, double* z, std::size_t point_
     {
         return lonlat2camera(x, y, z, point_count, offset);
     }
-    if (is_src_camera_)
-    {
-        return camera2latlon(x, y, z, point_count, offset);
-    }
     return true;
 }
 
@@ -317,6 +321,14 @@ bool proj_transform::backward(double* x, double* y, double* z, std::size_t point
     else if (merc_to_wgs84_)
     {
         return lonlat2merc(x, y, point_count, offset);
+    }
+    
+    if (is_dest_camera_)
+    {
+        if(!camera2latlon(x, y, z, point_count, offset))
+        {
+            return false;
+        }
     }
 
 #ifdef MAPNIK_USE_PROJ
@@ -339,10 +351,6 @@ bool proj_transform::backward(double* x, double* y, double* z, std::size_t point
         return false;
     }
 #endif
-    if (is_dest_camera_)
-    {
-        return camera2latlon(x, y, z, point_count, offset);
-    }
     if (is_src_camera_)
     {
         return lonlat2camera(x, y, z, point_count, offset);
