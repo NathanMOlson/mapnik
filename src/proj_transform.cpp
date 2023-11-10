@@ -641,7 +641,6 @@ void proj_transform::init_cam_params(const std::string& params)
 
 bool proj_transform::lonlat2camera(double* x, double* y, const double* z, std::size_t point_count, std::size_t stride) const
 {
-    bool valid = true;
     for (std::size_t i = 0; i < point_count; ++i)
     {
         double e = EARTH_RADIUS * util::radians(x[i * stride] - cam_params_.lon) * cos(util::radians(cam_params_.lat));
@@ -650,14 +649,22 @@ bool proj_transform::lonlat2camera(double* x, double* y, const double* z, std::s
         double f = n*cam_params_.rot[0][0] + e*cam_params_.rot[0][1] + d*cam_params_.rot[0][2];
         double r = n*cam_params_.rot[1][0] + e*cam_params_.rot[1][1] + d*cam_params_.rot[1][2];
         double b = n*cam_params_.rot[2][0] + e*cam_params_.rot[2][1] + d*cam_params_.rot[2][2];
+        double l = sqrt(f*f+r*r+b*b);
+        f /= l;
+        r /= l;
+        b /= l;
+        if(b < 0.5)
+        {
+            b = (b + 1)/3;
+            double h = sqrt(f*f + r*r);
+            double new_h = sqrt(1 - b*b);
+            f *= new_h / h;
+            r *= new_h / h;
+        }
         x[i * stride] = (cam_params_.width - 1)/2.0 + r / b / cam_params_.i_fov;
         y[i * stride] = (cam_params_.height - 1)/2.0 + f / b / cam_params_.i_fov;
-        if(b < 0)
-        {
-            valid = false;
-        }
     }
-    return valid;
+    return true;
 }
 
 bool proj_transform::camera2latlon(double* x, double* y, double* z, std::size_t point_count, std::size_t stride) const
